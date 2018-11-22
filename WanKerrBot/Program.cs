@@ -29,70 +29,63 @@ namespace WanKerrBot
 
         static async Task Main(string[] args)
         {
-            try
+            _client = new DiscordClient(new DiscordConfiguration()
             {
-                _client = new DiscordClient(new DiscordConfiguration()
-                {
-                    Token = Settings.GetSetting<string>("Token", null),
-                    LogLevel = LogLevel.Debug
-                });
+                Token = Settings.GetSetting<string>("Token", null),
+                LogLevel = LogLevel.Debug
+            });
 
-                _client.Ready += _client_Ready;
-                _client.MessageCreated += _client_MessageCreated;
-                _client.MessageReactionAdded += _client_MessageReactionAdded;
-                _client.DebugLogger.LogMessageReceived += (o, e) =>
-                {
-                    var color = ConsoleColor.White;
-                    switch (e.Level)
-                    {
-                        case LogLevel.Debug:
-                            color = ConsoleColor.DarkGray;
-                            break;
-                        case LogLevel.Warning:
-                            color = ConsoleColor.Yellow;
-                            break;
-                        case LogLevel.Error:
-                            color = ConsoleColor.Red;
-                            break;
-                        case LogLevel.Critical:
-                            color = ConsoleColor.DarkRed;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    Console.ForegroundColor = color;
-                    Console.Write($"[{e.Timestamp}][{e.Application}] ");
-                    Console.WriteLine(e.Message);
-                };
-
-                var services = new ServiceCollection();
-                //services.AddDbContext<WanKerrDbContext>();
-
-                _commands = _client.UseCommandsNext(new CommandsNextConfiguration()
-                {
-                    EnableDefaultHelp = false,
-                    EnableMentionPrefix = true,
-                    StringPrefixes = new[] { "!" }
-                });
-
-                _interactivity = _client.UseInteractivity(new InteractivityConfiguration()
-                {
-                    Timeout = TimeSpan.FromMinutes(5)
-                });
-
-                //_commands.SetHelpFormatter<HelpFormatter>();
-                _commands.RegisterCommands<BaseCommands>();
-                _commands.RegisterCommands<HomeChannelCommands>();
-                _commands.CommandErrored += _commands_CommandErrored;
-
-                await _client.ConnectAsync();
-                await Task.Delay(-1);
-            }
-            catch (Exception ex)
+            _client.Ready += _client_Ready;
+            _client.MessageCreated += _client_MessageCreated;
+            _client.MessageReactionAdded += _client_MessageReactionAdded;
+            _client.DebugLogger.LogMessageReceived += (o, e) =>
             {
+                var color = ConsoleColor.White;
+                switch (e.Level)
+                {
+                    case LogLevel.Debug:
+                        color = ConsoleColor.DarkGray;
+                        break;
+                    case LogLevel.Warning:
+                        color = ConsoleColor.Yellow;
+                        break;
+                    case LogLevel.Error:
+                        color = ConsoleColor.Red;
+                        break;
+                    case LogLevel.Critical:
+                        color = ConsoleColor.DarkRed;
+                        break;
+                    default:
+                        break;
+                }
 
-            }
+                Console.ForegroundColor = color;
+                Console.Write($"[{e.Timestamp}][{e.Application}] ");
+                Console.WriteLine(e.Message);
+            };
+
+            var services = new ServiceCollection();
+            //services.AddDbContext<WanKerrDbContext>();
+
+            _commands = _client.UseCommandsNext(new CommandsNextConfiguration()
+            {
+                EnableDefaultHelp = false,
+                EnableMentionPrefix = true,
+                StringPrefixes = new[] { "!" }
+            });
+
+            _interactivity = _client.UseInteractivity(new InteractivityConfiguration()
+            {
+                Timeout = TimeSpan.FromMinutes(5)
+            });
+
+            //_commands.SetHelpFormatter<HelpFormatter>();
+            _commands.RegisterCommands<BaseCommands>();
+            _commands.RegisterCommands<HomeChannelCommands>();
+            _commands.CommandErrored += _commands_CommandErrored;
+
+            await _client.ConnectAsync();
+            await Task.Delay(-1);
         }
 
         private static async Task _client_Ready(ReadyEventArgs e)
