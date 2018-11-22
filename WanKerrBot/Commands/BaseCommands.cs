@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using WamWooWam.Core;
@@ -15,7 +16,7 @@ namespace WanKerrBot.Commands
     [Description("Basic shit that is entirely useless.")]
     class BaseCommands : BaseCommandModule
     {
-        static Random _random = new Random();
+        static RandomNumberGenerator _random = RandomNumberGenerator.Create();
         static HttpClient _client = new HttpClient();
 
         [Command("Echo")]
@@ -87,12 +88,20 @@ namespace WanKerrBot.Commands
                     var builder = new StringBuilder();
                     builder.Append($"{ctx.Member.Username} rolled {no}d{sides} and got: ");
 
+                    byte[] bytes = new byte[10];
+                    int number = 0;
                     for (var i = 0; i < no - 1; i++)
                     {
-                        builder.Append($"{_random.Next(1, sides + 1)}, ");
+                        _random.GetBytes(bytes);
+                        number = bytes.Sum(b => b) % sides;
+
+                        builder.Append($"{number}, ");
                     }
 
-                    builder.Append(_random.Next(1, sides + 1));
+                    _random.GetBytes(bytes);
+                    number = bytes.Sum(b => b) % sides;
+
+                    builder.Append(number);
                     builder.Append("!");
                     await ctx.RespondAsync(builder.ToString());
                 }
