@@ -16,6 +16,20 @@ namespace WanKerrBot.Commands
     [Description("Basic shit that is entirely useless.")]
     class BaseCommands : BaseCommandModule
     {
+        static Dictionary<int, string> _emoji = new Dictionary<int, string>()
+        {
+            [0] = ":zero:",
+            [1] = ":one:",
+            [2] = ":two:",
+            [3] = ":three:",
+            [4] = ":four:",
+            [5] = ":five:",
+            [6] = ":six:",
+            [7] = ":seven:",
+            [8] = ":eight:",
+            [9] = ":nine:",
+        };
+
         static RandomNumberGenerator _random = RandomNumberGenerator.Create();
         static HttpClient _client = new HttpClient();
 
@@ -50,29 +64,29 @@ namespace WanKerrBot.Commands
             await ctx.RespondAsync("Hey! Something's very wrong here! Try again.");
         }
 
-        [Aliases("char")]
-        [Command("Character")]
-        [Description("Details a character or characters")]
-        public async Task Character(
-            CommandContext ctx,
-            [Description("The characters"), RemainingText] string str)
-        {
-            var dict = new Dictionary<string, Stream>();
+        //[Aliases("char")]
+        //[Command("Character")]
+        //[Description("Details a character or characters")]
+        //public async Task Character(
+        //    CommandContext ctx,
+        //    [Description("The characters"), RemainingText] string str)
+        //{
+        //    var dict = new Dictionary<string, Stream>();
 
-            for (var i = 0; i < str.Length; i++)
-            {
-                var c = str[i];
-                var resp = await _client.GetAsync(new Uri($"https://codepoints.net/api/v1/codepoint/{((ushort)c):x4}"));
-                var json = JObject.Parse(await resp.Content.ReadAsStringAsync());
-                if (json.TryGetValue("image", out var thing))
-                {
-                    var stream = new MemoryStream(thing.ToObject<byte[]>());
-                    dict.Add($"{i}.png", stream);
-                }
-            }
+        //    for (var i = 0; i < str.Length; i++)
+        //    {
+        //        var c = str[i];
+        //        var resp = await _client.GetAsync(new Uri($"https://codepoints.net/api/v1/codepoint/{((ushort)c):x4}"));
+        //        var json = JObject.Parse(await resp.Content.ReadAsStringAsync());
+        //        if (json.TryGetValue("image", out var thing))
+        //        {
+        //            var stream = new MemoryStream(thing.ToObject<byte[]>());
+        //            dict.Add($"{i}.png", stream);
+        //        }
+        //    }
 
-            await ctx.RespondWithFilesAsync(dict.OrderBy(k => k.Key).ToDictionary(k => k.Key, k => k.Value));
-        }
+        //    await ctx.RespondWithFilesAsync(dict.OrderBy(k => k.Key).ToDictionary(k => k.Key, k => k.Value));
+        //}
 
         [Command("Roll")]
         [Description("Take a risk...")]
@@ -95,13 +109,13 @@ namespace WanKerrBot.Commands
                         _random.GetBytes(bytes);
                         number = bytes.Sum(b => b) % sides;
 
-                        builder.Append($"{number}, ");
+                        builder.Append($"{(sides < 9 ? _emoji[number] : number.ToString())}, ");
                     }
 
                     _random.GetBytes(bytes);
                     number = bytes.Sum(b => b) % sides;
 
-                    builder.Append(number);
+                    builder.Append((sides < 9 ? _emoji[number] : number.ToString()));
                     builder.Append("!");
                     await ctx.RespondAsync(builder.ToString());
                 }
