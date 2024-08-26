@@ -1,74 +1,81 @@
-﻿using DSharpPlus.Entities;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using DSharpPlus;
+using DSharpPlus.Entities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Processors;
-using SixLabors.Shapes;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace WanKerrBot
+
+namespace WamBot
 {
-    class Tools
+    internal static class Tools
     {
         private static HttpClient _httpClient = new HttpClient();
-        internal static async Task<Image<Rgba32>> GetImageForUserAsync(DiscordMember user)
+
+        internal static async Task<Image<Rgba32>> GetAvatarAsync(this DiscordMember user, ImageFormat format = ImageFormat.Png, ushort size = 64)
         {
-            using (var stream = await _httpClient.GetStreamAsync(user.GetAvatarUrl(DSharpPlus.ImageFormat.Png, 64)))
+            using var stream = await _httpClient.GetStreamAsync(user.GetAvatarUrl(format, size));
+
+            return await Image.LoadAsync<Rgba32>(stream);
+        }
+
+       
+        public static void Shuffle<T>(this IList<T> list)
+        {
+            int n = list.Count;
+            while (n > 1)
             {
-                return Image.Load(stream);
+                n--;
+                int k = Random.Shared.Next(n + 1);
+                (list[n], list[k]) = (list[k], list[n]);
             }
         }
 
-        internal static async Task SendTemporaryMessage(DiscordChannel c, string mess = null, DiscordEmbed emb = null, int timeout = 5_000)
+        private static readonly string[] OWOIFY_FACES = ["(・`ω´・)", ";;w;;", "owo", "UwU", ">w<", "^w^", "😳", "🥺"];
+
+        public static string Owofiy(this string str)
         {
-            await Task.Yield();
-            new Task(async () =>
-            {
-                var message = await c.SendMessageAsync(mess, embed: emb);
-                await Task.Delay(timeout);
-                await message.DeleteAsync();
-            }).Start();
+            str = Regex.Replace(str, "(?:r|l)", "w", RegexOptions.ECMAScript);
+            str = Regex.Replace(str, "(?:R|L)", "W", RegexOptions.ECMAScript);
+            str = Regex.Replace(str, "n([aeiou])", (m) => $"ny{m.Groups[1].Value}", RegexOptions.ECMAScript);
+            str = Regex.Replace(str, "N([aeiou])", (m) => $"Ny{m.Groups[1].Value}", RegexOptions.ECMAScript);
+            str = Regex.Replace(str, "N([AEIOU])", (m) => $"Ny{m.Groups[1].Value}", RegexOptions.ECMAScript);
+            str = Regex.Replace(str, "ove", "uv", RegexOptions.ECMAScript);
+            // str = str.Replace("hi", "hewwo", StringComparison.OrdinalIgnoreCase);
+
+            str += " " + OWOIFY_FACES[Random.Shared.Next(OWOIFY_FACES.Length)];
+
+            return str;
+        }
+    }
+
+    public class RandomList<T>
+    {
+        private T[] _items;
+        private int _index;
+        private Random _random;
+
+        public RandomList(T[] items)
+        {
+            _random = new Random();
+            _items = new T[items.Length];
+            Array.Copy(items, _items, items.Length);
+            _items.Shuffle();
         }
 
-        internal static void ApplyRoundedCorners(Image<Rgba32> img, float cornerRadius)
+        public T Next()
         {
-            var corners = BuildCorners(img.Width, img.Height, cornerRadius);
-
-            var graphicOptions = new GraphicsOptions(true)
+            var item = _items[_index];
+            if (_index++ >= (_items.Length - 1))
             {
-                BlenderMode = PixelBlenderMode.Src // enforces that any part of this shape that has color is punched out of the background
-            };
-            // mutating in here as we already have a cloned original
-            img.Mutate(x => x.Fill(graphicOptions, Rgba32.Transparent, corners));
-        }
+                _index = 0;
+                _items.Shuffle();
+            }
 
-        internal static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius)
-        {
-            // first create a square
-            var rect = new RectangularPolygon(-0.5f, -0.5f, cornerRadius, cornerRadius);
-
-            // then cut out of the square a circle so we are left with a corner
-            var cornerToptLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
-
-            // corner is now a corner shape positions top left
-            //lets make 3 more positioned correctly, we can do that by translating the orgional artound the center of the image
-            var center = new Vector2(imageWidth / 2F, imageHeight / 2F);
-
-            var rightPos = imageWidth - cornerToptLeft.Bounds.Width + 1;
-            var bottomPos = imageHeight - cornerToptLeft.Bounds.Height + 1;
-
-            // move it across the widthof the image - the width of the shape
-            var cornerTopRight = cornerToptLeft.RotateDegree(90).Translate(rightPos, 0);
-            var cornerBottomLeft = cornerToptLeft.RotateDegree(-90).Translate(0, bottomPos);
-            var cornerBottomRight = cornerToptLeft.RotateDegree(180).Translate(rightPos, bottomPos);
-
-            return new PathCollection(cornerToptLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
+            return item;
         }
     }
 }
