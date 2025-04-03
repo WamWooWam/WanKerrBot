@@ -16,6 +16,11 @@ builder.Services.AddHttpClient("OpenElevation", c =>
     c.BaseAddress = new Uri("https://api.opentopodata.org/v1/"));
 builder.Services.AddHttpClient("Discord");
 
+builder.Services.AddHttpClient("ClippyService", (c) =>
+{
+    c.BaseAddress = new Uri(builder.Configuration["ClippyServiceUrl"]!);
+});
+
 builder.Services.AddHostedService<BotService>();
 
 using var host = builder.Build();

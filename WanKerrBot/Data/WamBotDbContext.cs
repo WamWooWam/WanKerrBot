@@ -6,21 +6,21 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-namespace WamBot.Data
+namespace WamBot.Data;
+
+internal class WamBotDbContext : DbContext
 {
-    internal class WamBotDbContext : DbContext
+    public DbSet<MemberInfo> Members { get; set; }
+    public DbSet<Canvas> Canvases { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        public DbSet<MemberInfo> Members { get; set; }
+        optionsBuilder.UseSqlite("Data Source=WamBot.db");
+    }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlite("Data Source=WamBot.db");
-        }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<MemberInfo>()
-                .HasKey(c => new { c.GuildId, c.UserId });
-        }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MemberInfo>()
+            .HasKey(c => new { c.GuildId, c.UserId });
     }
 }

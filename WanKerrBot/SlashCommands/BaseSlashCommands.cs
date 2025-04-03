@@ -18,6 +18,8 @@ using Newtonsoft.Json.Linq;
 using WamBot.Extensions;
 using Humanizer;
 using WamBot.Resources.Base;
+using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace WamBot.SlashCommands;
 
@@ -198,5 +200,74 @@ internal class BaseSlashCommands(IHttpClientFactory _httpFactory, ILogger<BaseSl
         text.Append(string.Format(line, ctx.User.Mention));
 
         await ctx.RespondAsync(Random.Shared.NextDouble() > 0.9 ? text.ToString().Owofiy() : text.ToString());
+    }
+
+#if DEBUG
+    [SlashCommand("buttons", "Button Test")]
+    public async Task Buttons(InteractionContext ctx)
+    {
+        await ctx.CreateResponseAsync(new DiscordInteractionResponseBuilder()
+            .AddComponents([
+                new DiscordButtonComponent(ButtonStyle.Primary, "button0", "Primary"),
+                new DiscordButtonComponent(ButtonStyle.Secondary, "button1", "Secondary"),
+                new DiscordButtonComponent(ButtonStyle.Success, "button2", "Success", emoji: new DiscordComponentEmoji(822560049498030081)),
+                new DiscordButtonComponent(ButtonStyle.Danger, "button3", "Danger", emoji: new DiscordComponentEmoji(1069073573089644667)),
+                new DiscordLinkButtonComponent("https://wamwoowam.co.uk", "External link"),
+                ]));
+    }
+#endif
+
+    [SlashCommand("h264ify", "mmmmmmmmmm compression")]
+    public async Task H264ify(InteractionContext ctx,
+        [Option("image", "The image to compress massively")] DiscordAttachment attachment,
+        [Option("crustiness", "The amount of compression to apply from 0 (basically lossless) to 16 (fucked)")] long crustiness = 4)
+    {
+        if (attachment.Width == null || attachment.Width == 0)
+        {
+            await ctx.RespondWithErrorAsync("NO WAY! NO WAY! NO WAY! NO WAY?");
+        }
+
+        await ctx.DeferAsync(false);
+
+        var inFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + Path.GetFileNameWithoutExtension(attachment.FileName));
+        var outMp4FileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".mp4");
+        var outPngFileName = Path.ChangeExtension(outMp4FileName, "png");
+
+        var bitrate = Math.Min(Math.Max(7, Math.Floor(7 * (attachment.Width.Value * attachment.Height.Value) / 250000.0)), 28);
+        var quality = Math.Floor(bitrate + (Math.Pow(1.66, 17 - crustiness)));
+
+        {
+            using var stream = File.Create(inFileName, 16 * 1024, FileOptions.Asynchronous);
+            using var client = _httpFactory.CreateClient("Discord");
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, attachment.Url);
+            using var resp = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            resp.EnsureSuccessStatusCode();
+
+            using var content = await resp.Content.ReadAsStreamAsync();
+            await content.CopyToAsync(stream);
+        }
+
+        string[] commands = ["-i", inFileName, "-frames:v", "1", "-vf", $"scale={attachment.Width}x{attachment.Height}", "-c:v", "libx264", "-b:v", $"{quality}k", outMp4FileName];
+        var psi = new ProcessStartInfo("ffmpeg", commands);
+        var process = Process.Start(psi);
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+            throw new Exception("ffmpeg command failed!");
+
+        commands = ["-i", outMp4FileName, "-update", "1", "-frames:v", "1", outPngFileName];
+        psi = new ProcessStartInfo("ffmpeg", commands);
+        process = Process.Start(psi);
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+            throw new Exception("ffmpeg command failed!");
+
+        {
+            using var stream = File.Open(outPngFileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+            await ctx.FollowUpAsync(new DiscordFollowupMessageBuilder()
+                .AddFile("test.png", stream));
+        }
     }
 }
